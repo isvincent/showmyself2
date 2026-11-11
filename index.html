@@ -1,0 +1,920 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>我和別人不一樣的地方 - 簡報式影片</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&family=Zen+Maru+Gothic:wght@700;900&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Noto Sans TC', sans-serif;
+      background-color: #0f141c;
+      user-select: none;
+    }
+    .font-display {
+      font-family: 'Zen Maru Gothic', 'Noto Sans TC', sans-serif;
+    }
+    
+    /* 16:9 播放器響應式容器 */
+    .aspect-video-box {
+      width: 100%;
+      max-width: 1280px;
+      aspect-ratio: 16 / 9;
+    }
+
+    /* 投影片轉場樣式 */
+    .slide-wrapper {
+      position: absolute;
+      inset: 0;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.7s cubic-bezier(0.4, 0, 0.2, 1), transform 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+      will-change: opacity, transform;
+    }
+
+    .slide-wrapper.active {
+      opacity: 1;
+      pointer-events: auto;
+      transform: translateX(0) scale(1);
+      z-index: 10;
+    }
+
+    /* 轉場動畫定義 */
+    .transition-fade.slide-out-prev {
+      opacity: 0;
+      transform: scale(0.98);
+    }
+    .transition-slide-left.slide-in-next {
+      transform: translateX(60px);
+    }
+    .transition-slide-left.slide-out-prev {
+      transform: translateX(-60px);
+      opacity: 0;
+    }
+    .transition-zoom.slide-in-next {
+      transform: scale(1.08);
+      opacity: 0;
+    }
+    .transition-zoom.slide-out-prev {
+      transform: scale(0.92);
+      opacity: 0;
+    }
+
+    /* 逐段文字與元素進場動畫 */
+    .anim-elem {
+      opacity: 0;
+      transform: translateY(24px);
+      transition: opacity 0.65s cubic-bezier(0.16, 1, 0.3, 1), transform 0.65s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .anim-visible {
+      opacity: 1 !important;
+      transform: translateY(0) scale(1) !important;
+    }
+
+    /* 柔和文字陰影，確保在任何亮色插圖背景上極其清晰 */
+    .text-glow {
+      text-shadow: 0 2px 14px rgba(255, 255, 255, 0.9), 0 0 4px rgba(255, 255, 255, 0.8);
+    }
+    .badge-shadow {
+      box-shadow: 0 8px 24px -4px rgba(30, 41, 59, 0.08), 0 4px 10px rgba(0, 0, 0, 0.03);
+    }
+
+    /* 自定義捲軸 */
+    ::-webkit-scrollbar {
+      height: 6px;
+      width: 6px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #475569;
+      border-radius: 4px;
+    }
+  </style>
+</head>
+<body class="min-h-screen text-slate-100 flex flex-col items-center justify-center p-2 sm:p-4 md:p-6 overflow-x-hidden">
+
+  <!-- 頂部資訊列 -->
+  <header class="w-full max-w-[1280px] flex items-center justify-between py-2 px-3 text-xs md:text-sm text-slate-400">
+    <div class="flex items-center space-x-2">
+      <span class="inline-block w-2.5 h-2.5 rounded-full bg-amber-400 animate-pulse"></span>
+      <span class="font-bold text-slate-200 tracking-wider">我和別人不一樣的地方</span>
+      <span class="hidden sm:inline-block px-2 py-0.5 rounded bg-slate-800 text-slate-400 text-xs">高中生個人特質探索影片</span>
+    </div>
+    <div id="voice-indicator" class="flex items-center space-x-1.5 text-xs text-emerald-400 bg-emerald-950/60 border border-emerald-800/40 px-2.5 py-1 rounded-full">
+      <svg class="w-3.5 h-3.5 animate-spin" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"></path></svg>
+      <span>語音模組載入中...</span>
+    </div>
+  </header>
+
+  <!-- 主播放器舞台容器 (16:9) -->
+  <main class="aspect-video-box relative rounded-2xl overflow-hidden shadow-2xl border border-slate-800 bg-slate-900 group">
+    
+    <!-- 投影片容器 -->
+    <div id="slides-viewport" class="relative w-full h-full overflow-hidden select-none">
+      <!-- 7 張投影片將由 JavaScript 動態生成注入，保證純淨且具動畫 -->
+    </div>
+
+    <!-- 底部字體字幕浮層 (Cinematic Subtitle Bar) -->
+    <div id="subtitle-container" class="absolute bottom-16 md:bottom-20 left-0 right-0 z-30 pointer-events-none flex justify-center px-4 transition-all duration-300">
+      <div id="subtitle-box" class="bg-black/75 backdrop-blur-md text-amber-200 border border-white/20 text-base sm:text-xl md:text-2xl lg:text-3xl font-medium tracking-wide px-6 py-2.5 rounded-2xl shadow-2xl max-w-[90%] text-center transition-all duration-300 transform scale-95 opacity-0">
+        <span id="subtitle-text">準備開始播放...</span>
+      </div>
+    </div>
+
+    <!-- 播放器覆蓋控制層 (懸浮時或暫停時更明顯) -->
+    <div id="player-controls" class="absolute inset-x-0 bottom-0 z-40 bg-gradient-to-t from-slate-950/95 via-slate-950/70 to-transparent pt-10 pb-3 px-4 md:px-6 transition-opacity duration-300 flex flex-col justify-end">
+      
+      <!-- 進度條 -->
+      <div class="relative w-full h-2 bg-white/20 rounded-full cursor-pointer overflow-hidden group/bar mb-3" id="timeline-bar">
+        <div id="timeline-buffered" class="absolute top-0 left-0 bottom-0 bg-white/30 rounded-full transition-all duration-300" style="width: 100%;"></div>
+        <div id="timeline-progress" class="absolute top-0 left-0 bottom-0 bg-gradient-to-r from-amber-400 to-orange-500 rounded-full transition-all duration-150" style="width: 0%;"></div>
+      </div>
+
+      <!-- 控制按鈕列 -->
+      <div class="flex items-center justify-between text-white text-sm">
+        <div class="flex items-center space-x-3 md:space-x-4">
+          <!-- 播放/暫停 -->
+          <button id="btn-play-pause" class="p-2 bg-amber-400 hover:bg-amber-300 text-slate-950 rounded-full shadow-lg transition transform hover:scale-110 active:scale-95 focus:outline-none" title="播放 / 暫停">
+            <svg id="icon-play" class="w-5 h-5 ml-0.5" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+            <svg id="icon-pause" class="w-5 h-5 hidden" fill="currentColor" viewBox="0 0 24 24"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+          </button>
+
+          <!-- 重新播放本頁 -->
+          <button id="btn-replay" class="p-2 text-slate-300 hover:text-white hover:bg-white/10 rounded-full transition" title="重播此頁">
+            <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+          </button>
+
+          <!-- 上一頁 / 下一頁 -->
+          <div class="flex items-center space-x-1">
+            <button id="btn-prev" class="p-1.5 text-slate-300 hover:text-white hover:bg-white/10 rounded-lg transition" title="上一頁">
+              <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M15.41 7.41L14 6l-6 6 6 6 1.41-1.41L10.83 12z"/></svg>
+            </button>
+            <span id="slide-indicator" class="text-xs md:text-sm font-semibold tracking-wider px-2 text-slate-200">1 / 7</span>
+            <button id="btn-next" class="p-1.5 text-slate-300 hover:text-white hover:bg-white/10 rounded-lg transition" title="下一頁">
+              <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>
+            </button>
+          </div>
+
+          <!-- 播放時間 -->
+          <div class="text-xs md:text-sm text-slate-400 font-mono">
+            <span id="time-current">00:00</span> / <span id="time-total">02:26</span>
+          </div>
+        </div>
+
+        <!-- 右側輔助控制 -->
+        <div class="flex items-center space-x-2 md:space-x-3">
+          <!-- 語速提示 -->
+          <span class="hidden md:inline-flex items-center text-xs px-2 py-0.5 rounded bg-amber-400/20 text-amber-300 border border-amber-400/30">
+            旁白 1.2x (Zhiwei)
+          </span>
+
+          <!-- 字幕開關 -->
+          <button id="btn-cc" class="px-2.5 py-1 text-xs font-bold rounded border border-amber-400/80 bg-amber-400/20 text-amber-300 hover:bg-amber-400/30 transition">
+            CC 字幕
+          </button>
+
+          <!-- 全螢幕切換 -->
+          <button id="btn-fullscreen" class="p-2 text-slate-300 hover:text-white hover:bg-white/10 rounded-full transition" title="全螢幕">
+            <svg id="icon-fs" class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24"><path d="M7 14H5v5h5v-2H7v-3zm-2-4h2V7h3V5H5v5zm12 7h-3v2h5v-5h-2v3zM14 5v2h3v3h2V5h-5z"/></svg>
+            <svg id="icon-exit-fs" class="w-5 h-5 hidden" fill="currentColor" viewBox="0 0 24 24"><path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- 初始待機播放提示遮罩 (點擊任意處開始有聲播放) -->
+    <div id="start-overlay" class="absolute inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex flex-col items-center justify-center cursor-pointer transition-all duration-500">
+      <div class="w-20 h-20 md:w-24 md:h-24 rounded-full bg-amber-400 text-slate-950 flex items-center justify-center shadow-2xl transform transition hover:scale-110 active:scale-95">
+        <svg class="w-10 h-10 md:w-12 md:h-12 ml-1" fill="currentColor" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+      </div>
+      <h2 class="mt-6 text-xl md:text-3xl font-black text-white tracking-wider">點擊開始播放簡報影片</h2>
+      <p class="mt-2 text-xs md:text-sm text-slate-300 flex items-center gap-1.5">
+        <svg class="w-4 h-4 text-amber-400" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z"/></svg>
+        配音旁白採用 Microsoft Zhiwei (1.2x 語速) 搭配分段同步字幕
+      </p>
+    </div>
+  </main>
+
+  <!-- 底部縮圖導覽列 -->
+  <footer class="w-full max-w-[1280px] mt-4">
+    <div class="text-xs text-slate-400 mb-2 px-1 flex justify-between items-center">
+      <span>投影片章節跳轉</span>
+      <span class="text-slate-500">支援鍵盤 ← / → 或 空白鍵 暫停</span>
+    </div>
+    <div id="thumbnails-track" class="grid grid-cols-7 gap-2 md:gap-3">
+      <!-- 縮圖動態渲染 -->
+    </div>
+  </footer>
+
+  <!-- 互動腳本邏輯 -->
+  <script>
+    /**
+     * 7 張投影片完整資料庫
+     * 對應使用者上傳的 7 張插圖檔案 (第1張.jpg ~ 第7張.jpg)
+     */
+    const SLIDES_DATA = [
+      {
+        id: "slide_01",
+        slideNum: 1,
+        title: "我從一片葉子\n介紹自己",
+        highlightTag: "特質覺察 01",
+        bulletPoints: [
+          "我喜歡觀察容易被忽略的小事",
+          "我正慢慢發現這些習慣的意義"
+        ],
+        narration: "如果用一個畫面介紹自己，我會是放學後蹲在教室窗邊，替葉子拍照的人。我想知道，夕陽下的葉影為什麼像一張小地圖。以前我覺得這些觀察沒什麼用，現在才慢慢發現，這也是我的特色。",
+        segments: [
+          { text: "如果用一個畫面介紹自己，", duration: 2.2 },
+          { text: "我會是放學後蹲在教室窗邊、替葉子拍照的人。", duration: 4.2 },
+          { text: "我想知道，夕陽下的葉影為什麼像一張小地圖。", duration: 4.0 },
+          { text: "以前我覺得這些觀察沒什麼用，", duration: 2.8 },
+          { text: "現在才慢慢發現，這也是我的特色。", duration: 3.5 }
+        ],
+        sceneImage: "第1張.jpg",
+        transition: "transition-fade",
+        accentColor: "from-amber-500 to-emerald-500",
+        svgIcon: `
+          <svg class="w-12 h-12 text-amber-500 drop-shadow-md" viewBox="0 0 64 64" fill="none">
+            <path d="M16 48C16 48 20 28 48 16C48 16 44 36 16 48Z" fill="#FBBF24" fill-opacity="0.3" stroke="#D97706" stroke-width="3" stroke-linejoin="round"/>
+            <path d="M22 42L44 20" stroke="#B45309" stroke-width="2.5" stroke-linecap="round"/>
+            <path d="M29 35L33 39" stroke="#B45309" stroke-width="2" stroke-linecap="round"/>
+            <path d="M37 27L41 31" stroke="#B45309" stroke-width="2" stroke-linecap="round"/>
+            <circle cx="48" cy="16" r="3" fill="#D97706"/>
+          </svg>
+        `
+      },
+      {
+        id: "slide_02",
+        slideNum: 2,
+        title: "我習慣先聽，\n再慢慢說",
+        highlightTag: "團隊思考 02",
+        bulletPoints: [
+          "我需要先整理，才知道想說什麼",
+          "我用關係圖幫大家找到共同方向"
+        ],
+        narration: "小組討論時，我常常還在畫線、記關鍵字，大家就已經說了好多點子。我也擔心別人以為我沒想法。有一次，我把討論整理成關係圖，讓大家看見三個點子的共同問題。我才發現，先聽再說也能幫上忙。",
+        segments: [
+          { text: "小組討論時，我常常還在畫線、記關鍵字，", duration: 3.6 },
+          { text: "大家就已經說了好多點子。", duration: 2.4 },
+          { text: "我也擔心別人以為我沒想法。", duration: 2.6 },
+          { text: "有一次，我把討論整理成關係圖，", duration: 3.0 },
+          { text: "讓大家看見三個點子的共同問題。", duration: 3.2 },
+          { text: "我才發現，先聽再說也能幫上忙。", duration: 3.2 }
+        ],
+        sceneImage: "第2張.jpg",
+        transition: "transition-slide-left",
+        accentColor: "from-blue-500 to-indigo-500",
+        svgIcon: `
+          <svg class="w-12 h-12 text-blue-500 drop-shadow-md" viewBox="0 0 64 64" fill="none">
+            <circle cx="32" cy="32" r="10" fill="#60A5FA" fill-opacity="0.25" stroke="#2563EB" stroke-width="3"/>
+            <circle cx="16" cy="18" r="6" fill="#93C5FD" fill-opacity="0.3" stroke="#3B82F6" stroke-width="2.5"/>
+            <circle cx="48" cy="18" r="6" fill="#93C5FD" fill-opacity="0.3" stroke="#3B82F6" stroke-width="2.5"/>
+            <circle cx="32" cy="52" r="6" fill="#93C5FD" fill-opacity="0.3" stroke="#3B82F6" stroke-width="2.5"/>
+            <line x1="20" y1="22" x2="27" y2="28" stroke="#1D4ED8" stroke-width="2.5" stroke-dasharray="3 3"/>
+            <line x1="44" y1="22" x2="37" y2="28" stroke="#1D4ED8" stroke-width="2.5" stroke-dasharray="3 3"/>
+            <line x1="32" y1="42" x2="32" y2="46" stroke="#1D4ED8" stroke-width="2.5" stroke-dasharray="3 3"/>
+          </svg>
+        `
+      },
+      {
+        id: "slide_03",
+        slideNum: 3,
+        title: "我想留下普通\n事物的樣子",
+        highlightTag: "日常凝視 03",
+        bulletPoints: [
+          "我喜歡拍倒影、書包和課本",
+          "我用照片留下自己看見的小事"
+        ],
+        narration: "我的手機裡，有雨後操場的倒影，也有被風吹得翻頁的課本。我曾拍下兩把掃把的長影子，覺得像兩個人在聊天。朋友問這有什麼好拍，我先失落，後來卻笑了。原來同一個地方，我們真的會看見不同的東西。",
+        segments: [
+          { text: "我的手機裡，有雨後操場的倒影，", duration: 3.2 },
+          { text: "也有被風吹得翻頁的課本。", duration: 2.8 },
+          { text: "我曾拍下兩把掃把的長影子，覺得像兩個人在聊天。", duration: 4.5 },
+          { text: "朋友問這有什麼好拍，我先失落，後來卻笑了。", duration: 4.2 },
+          { text: "原來同一個地方，我們真的會看見不同的東西。", duration: 4.2 }
+        ],
+        sceneImage: "第3張.jpg",
+        transition: "transition-fade",
+        accentColor: "from-amber-600 to-yellow-500",
+        svgIcon: `
+          <svg class="w-12 h-12 text-amber-600 drop-shadow-md" viewBox="0 0 64 64" fill="none">
+            <rect x="12" y="18" width="40" height="32" rx="6" fill="#FDE68A" fill-opacity="0.3" stroke="#D97706" stroke-width="3"/>
+            <circle cx="32" cy="34" r="8" stroke="#B45309" stroke-width="3"/>
+            <circle cx="43" cy="24" r="2.5" fill="#D97706"/>
+            <path d="M26 14H38" stroke="#D97706" stroke-width="3" stroke-linecap="round"/>
+          </svg>
+        `
+      },
+      {
+        id: "slide_04",
+        slideNum: 4,
+        title: "我在重拍中\n找到問題",
+        highlightTag: "實踐堅持 04",
+        bulletPoints: [
+          "我做停格動畫時，遇到晃動和手入鏡",
+          "我固定手機、標記位置，讓畫面更順"
+        ],
+        narration: "我曾用便利貼替班上成果報告做停格動畫，卻遇到桌面晃動、手跑進畫面的問題。我重拍好幾次，固定手機、貼好位置後，畫面才順了一點。成品只有十幾秒，但看見便利貼動起來，我最開心的是終於找到問題。",
+        segments: [
+          { text: "我曾用便利貼替班上成果報告做停格動畫，", duration: 3.8 },
+          { text: "卻遇到桌面晃動、手跑進畫面的問題。", duration: 3.4 },
+          { text: "我重拍好幾次，固定手機、貼好位置後，", duration: 3.8 },
+          { text: "畫面才順了一點。", duration: 1.8 },
+          { text: "成品只有十幾秒，但看見便利貼動起來，", duration: 3.6 },
+          { text: "我最開心的是終於找到問題。", duration: 2.8 }
+        ],
+        sceneImage: "第4張.jpg",
+        transition: "transition-zoom",
+        accentColor: "from-teal-500 to-cyan-600",
+        svgIcon: `
+          <svg class="w-12 h-12 text-teal-600 drop-shadow-md" viewBox="0 0 64 64" fill="none">
+            <rect x="14" y="16" width="22" height="22" rx="3" fill="#A7F3D0" fill-opacity="0.4" stroke="#059669" stroke-width="3"/>
+            <rect x="28" y="26" width="22" height="22" rx="3" fill="#6EE7B7" fill-opacity="0.4" stroke="#047857" stroke-width="3"/>
+            <path d="M34 37L39 42L48 31" stroke="#065F46" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+        `
+      },
+      {
+        id: "slide_05",
+        slideNum: 5,
+        title: "我用陪伴\n靠近朋友",
+        highlightTag: "溫柔共感 05",
+        bulletPoints: [
+          "我會陪朋友練習報告",
+          "我也能用一起走路表達關心"
+        ],
+        narration: "朋友難過時，我不太會立刻說出安慰的話，有時還怕說錯。但我會陪朋友練習報告，也會問安靜的同學要不要一起走。有一次，我陪考差的朋友繞操場兩圈。他說有人陪著就很好，讓我知道關心不一定要說很多話。",
+        segments: [
+          { text: "朋友難過時，我不太會立刻說出安慰的話，", duration: 3.6 },
+          { text: "有時還怕說錯。", duration: 1.8 },
+          { text: "但我會陪朋友練習報告，", duration: 2.4 },
+          { text: "也會問安靜的同學要不要一起走。", duration: 3.0 },
+          { text: "有一次，我陪考差的朋友繞操場兩圈。", duration: 3.6 },
+          { text: "他說有人陪著就很好，", duration: 2.2 },
+          { text: "讓我知道關心不一定要說很多話。", duration: 3.0 }
+        ],
+        sceneImage: "第5張.jpg",
+        transition: "transition-fade",
+        accentColor: "from-orange-500 to-rose-500",
+        svgIcon: `
+          <svg class="w-12 h-12 text-rose-500 drop-shadow-md" viewBox="0 0 64 64" fill="none">
+            <path d="M32 50S16 38 16 26A10 10 0 0132 18A10 10 0 0148 26C48 38 32 50 32 50Z" fill="#FECDD3" fill-opacity="0.4" stroke="#E11D48" stroke-width="3" stroke-linejoin="round"/>
+            <circle cx="28" cy="27" r="2" fill="#BE123C"/>
+            <circle cx="36" cy="27" r="2" fill="#BE123C"/>
+            <path d="M29 32Q32 35 35 32" stroke="#BE123C" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        `
+      },
+      {
+        id: "slide_06",
+        slideNum: 6,
+        title: "我開始分享\n自己的眼光",
+        highlightTag: "勇氣跨越 06",
+        bulletPoints: [
+          "我曾因為怕點子奇怪，不敢分享照片",
+          "我拍下的表情，讓同學看見不同細節"
+        ],
+        narration: "我也曾羨慕別人的自信，怕照片太奇怪而不敢分享。後來，同學邀我拍班級活動，我答應了，卻拖了兩天才敢放進班群。看到大家說我拍到他們沒注意的表情，我才鬆口氣。原來想得多，也能讓我多看見一些事情。",
+        segments: [
+          { text: "我也曾羨慕別人的自信，", duration: 2.4 },
+          { text: "怕照片太奇怪而不敢分享。", duration: 2.6 },
+          { text: "後來，同學邀我拍班級活動，我答應了，", duration: 3.6 },
+          { text: "卻拖了兩天才敢放進班群。", duration: 2.6 },
+          { text: "看到大家說我拍到他們沒注意的表情，我才鬆口氣。", duration: 4.4 },
+          { text: "原來想得多，也能讓我多看見一些事情。", duration: 3.6 }
+        ],
+        sceneImage: "第6張.jpg",
+        transition: "transition-slide-left",
+        accentColor: "from-sky-500 to-blue-600",
+        svgIcon: `
+          <svg class="w-12 h-12 text-sky-500 drop-shadow-md" viewBox="0 0 64 64" fill="none">
+            <circle cx="32" cy="32" r="20" stroke="#0284C7" stroke-width="3"/>
+            <circle cx="32" cy="32" r="8" fill="#BAE6FD" fill-opacity="0.5" stroke="#0369A1" stroke-width="3"/>
+            <path d="M12 32C18 20 46 20 52 32C46 44 18 44 12 32Z" stroke="#0284C7" stroke-width="2.5"/>
+            <circle cx="35" cy="29" r="2" fill="white"/>
+          </svg>
+        `
+      },
+      {
+        id: "slide_07",
+        slideNum: 7,
+        title: "我想帶著自己的\n步調往前走",
+        highlightTag: "願景未來 07",
+        bulletPoints: [
+          "我想把校園角落整理成影像日記",
+          "我想練習提早說出還不完整的想法",
+          "我願意把眼中的世界分享給別人"
+        ],
+        narration: "接下來，我想把校園角落整理成影像日記，也練習在討論時，提早說出還不完整的想法。我想保留觀察、傾聽和反覆嘗試的習慣，同時多往前走一步。這些普通的特點組成了我，我願意把眼中的世界分享給別人。",
+        segments: [
+          { text: "接下來，我想把校園角落整理成影像日記，", duration: 3.6 },
+          { text: "也練習在討論時，提早說出還不完整的想法。", duration: 4.0 },
+          { text: "我想保留觀察、傾聽和反覆嘗試的習慣，", duration: 3.8 },
+          { text: "同時多往前走一步。", duration: 2.2 },
+          { text: "這些普通的特點組成了我，", duration: 2.6 },
+          { text: "我願意把眼中的世界分享給別人。", duration: 3.2 }
+        ],
+        sceneImage: "第7張.jpg",
+        transition: "transition-fade",
+        accentColor: "from-amber-500 to-orange-500",
+        svgIcon: `
+          <svg class="w-12 h-12 text-amber-500 drop-shadow-md" viewBox="0 0 64 64" fill="none">
+            <path d="M18 16H46V48L32 40L18 48V16Z" fill="#FDE68A" fill-opacity="0.4" stroke="#D97706" stroke-width="3" stroke-linejoin="round"/>
+            <path d="M26 26L38 26" stroke="#B45309" stroke-width="2.5" stroke-linecap="round"/>
+            <path d="M26 32L34 32" stroke="#B45309" stroke-width="2.5" stroke-linecap="round"/>
+            <circle cx="48" cy="16" r="4" fill="#F59E0B"/>
+          </svg>
+        `
+      }
+    ];
+
+    // 播放器狀態機
+    const state = {
+      currentIndex: 0,
+      isPlaying: false,
+      isSubtitleEnabled: true,
+      currentSegmentIndex: 0,
+      speechVoice: null,
+      speechUtterance: null,
+      slideTimer: null,
+      segmentTimer: null,
+      isSpeechSupported: 'speechSynthesis' in window,
+      totalDurationSec: SLIDES_DATA.reduce((acc, s) => acc + s.segments.reduce((a, b) => a + b.duration, 0), 0)
+    };
+
+    // DOM 元素引用
+    const viewport = document.getElementById('slides-viewport');
+    const btnPlayPause = document.getElementById('btn-play-pause');
+    const iconPlay = document.getElementById('icon-play');
+    const iconPause = document.getElementById('icon-pause');
+    const btnReplay = document.getElementById('btn-replay');
+    const btnPrev = document.getElementById('btn-prev');
+    const btnNext = document.getElementById('btn-next');
+    const btnCC = document.getElementById('btn-cc');
+    const btnFullscreen = document.getElementById('btn-fullscreen');
+    const iconFs = document.getElementById('icon-fs');
+    const iconExitFs = document.getElementById('icon-exit-fs');
+    const slideIndicator = document.getElementById('slide-indicator');
+    const timelineProgress = document.getElementById('timeline-progress');
+    const timelineBar = document.getElementById('timeline-bar');
+    const timeCurrent = document.getElementById('time-current');
+    const timeTotal = document.getElementById('time-total');
+    const subtitleBox = document.getElementById('subtitle-box');
+    const subtitleText = document.getElementById('subtitle-text');
+    const startOverlay = document.getElementById('start-overlay');
+    const voiceIndicator = document.getElementById('voice-indicator');
+    const thumbnailsTrack = document.getElementById('thumbnails-track');
+
+    /**
+     * 1. 初始化頁面投影片 DOM
+     * 左側放置加大放寬的高質感視覺資訊卡片，完全不遮擋右半邊人物插圖本體
+     */
+    function initSlidesDOM() {
+      viewport.innerHTML = '';
+      SLIDES_DATA.forEach((slide, index) => {
+        const slideEl = document.createElement('div');
+        slideEl.id = `slide-${index}`;
+        slideEl.className = `slide-wrapper ${slide.transition} ${index === 0 ? 'active' : ''}`;
+        
+        // 背景圖片依上傳圖檔設定，絕不覆蓋任何全螢幕半透明遮罩
+        slideEl.style.backgroundImage = `url('${slide.sceneImage}')`;
+        slideEl.style.backgroundSize = 'cover';
+        slideEl.style.backgroundPosition = 'center right';
+
+        // 格式化標題換行
+        const formattedTitle = slide.title.replace(/\n/g, '<br/>');
+
+        // 左半部文字卡片與 SVG 裝飾 (自然融入原本留白區)
+        slideEl.innerHTML = `
+          <!-- 輕柔左側專屬微漸層，強化文字閱讀性同時完全保證右側畫面清透純淨 -->
+          <div class="absolute inset-y-0 left-0 w-3/5 bg-gradient-to-r from-white/95 via-white/80 to-transparent pointer-events-none"></div>
+
+          <!-- 左側核心視覺看板 -->
+          <div class="relative z-10 w-full h-full flex flex-col justify-between p-6 sm:p-10 md:p-12 lg:p-16 max-w-[55%]">
+            
+            <!-- 上部：標籤徽章與 SVG 主題識別 -->
+            <div class="flex items-center space-x-3 anim-elem" data-delay="100">
+              <div class="p-2.5 rounded-2xl bg-white/90 backdrop-blur-md badge-shadow border border-slate-200/80">
+                ${slide.svgIcon}
+              </div>
+              <div>
+                <span class="inline-block text-xs md:text-sm font-black tracking-widest uppercase bg-gradient-to-r ${slide.accentColor} bg-clip-text text-transparent">
+                  ${slide.highlightTag}
+                </span>
+                <p class="text-xs text-slate-500 font-medium">我的特質探索日記 • SLIDE ${slide.slideNum}</p>
+              </div>
+            </div>
+
+            <!-- 中部：加大加粗的主標題與視覺重點 -->
+            <div class="my-auto space-y-4 md:space-y-6">
+              <h1 class="text-3xl sm:text-4xl md:text-5xl lg:text-[54px] font-black leading-tight text-slate-900 tracking-tight font-display anim-elem text-glow" data-delay="300">
+                ${formattedTitle}
+              </h1>
+              
+              <!-- 重點條目 (依序顯現動畫) -->
+              <div class="space-y-3 pt-2">
+                ${slide.bulletPoints.map((point, ptIdx) => `
+                  <div class="anim-elem flex items-start space-x-3 bg-white/85 backdrop-blur-md p-3 sm:p-3.5 rounded-xl border border-amber-200/70 shadow-sm" data-delay="${500 + ptIdx * 250}">
+                    <span class="mt-1 flex-shrink-0 w-5 h-5 rounded-full bg-amber-400 text-slate-900 flex items-center justify-center font-bold text-xs shadow-sm">
+                      ✓
+                    </span>
+                    <span class="text-base sm:text-lg md:text-xl font-bold text-slate-800 leading-snug">
+                      ${point}
+                    </span>
+                  </div>
+                `).join('')}
+              </div>
+            </div>
+
+            <!-- 下部：互動小提示與進度標記 -->
+            <div class="flex items-center space-x-2 text-xs md:text-sm text-slate-500 font-semibold anim-elem" data-delay="900">
+              <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+              <span>觀察 • 傾聽 • 嘗試 • 陪伴</span>
+            </div>
+
+          </div>
+        `;
+        viewport.appendChild(slideEl);
+      });
+
+      // 初始化下方縮圖
+      initThumbnails();
+      timeTotal.textContent = formatTime(state.totalDurationSec);
+    }
+
+    /**
+     * 2. 建立底部導覽縮圖
+     */
+    function initThumbnails() {
+      thumbnailsTrack.innerHTML = '';
+      SLIDES_DATA.forEach((s, idx) => {
+        const thumb = document.createElement('button');
+        thumb.className = `group relative rounded-lg overflow-hidden border-2 aspect-video transition-all transform hover:scale-105 ${idx === 0 ? 'border-amber-400 ring-2 ring-amber-400/50' : 'border-slate-800 opacity-60 hover:opacity-100'}`;
+        thumb.id = `thumb-${idx}`;
+        thumb.innerHTML = `
+          <img src="${s.sceneImage}" alt="投影片 ${idx + 1}" class="w-full h-full object-cover">
+          <div class="absolute inset-0 bg-slate-900/40 group-hover:bg-transparent transition"></div>
+          <span class="absolute bottom-1 right-1.5 text-[10px] font-bold px-1 rounded bg-black/70 text-white">0${idx + 1}</span>
+        `;
+        thumb.addEventListener('click', () => {
+          goToSlide(idx);
+          if (!state.isPlaying) play();
+        });
+        thumbnailsTrack.appendChild(thumb);
+      });
+    }
+
+    /**
+     * 3. 語音配音設定 (Web Speech Synthesis)
+     * 針對需求：優先選取 "Microsoft Zhiwei"，語速設為 1.2 倍
+     */
+    function setupVoiceEngine() {
+      if (!state.isSpeechSupported) {
+        voiceIndicator.innerHTML = `<span class="text-rose-400">瀏覽器不支援語音合成</span>`;
+        return;
+      }
+
+      function pickTargetVoice() {
+        const voices = window.speechSynthesis.getVoices();
+        if (!voices || voices.length === 0) return;
+
+        // 1. 優先尋找 Microsoft Zhiwei (臺灣男性中文)
+        let foundVoice = voices.find(v => v.name.includes("Zhiwei") || v.name.includes("志偉"));
+
+        // 2. 次要尋找中文 (臺灣) 男性或自然語音
+        if (!foundVoice) {
+          foundVoice = voices.find(v => (v.lang === 'zh-TW' || v.lang === 'zh_TW') && (v.name.includes('Male') || v.name.includes('男')));
+        }
+
+        // 3. 再次尋找任何 zh-TW 語音
+        if (!foundVoice) {
+          foundVoice = voices.find(v => v.lang === 'zh-TW' || v.lang === 'zh_TW');
+        }
+
+        // 4. 再次尋找任何中文語音 (zh-CN / zh-HK 等)
+        if (!foundVoice) {
+          foundVoice = voices.find(v => v.lang.startsWith('zh'));
+        }
+
+        state.speechVoice = foundVoice || voices[0];
+        
+        const voiceLabel = state.speechVoice?.name.includes('Zhiwei') ? 'Microsoft Zhiwei (男聲)' : (state.speechVoice?.name || '標準中文');
+        voiceIndicator.innerHTML = `
+          <svg class="w-3.5 h-3.5 text-emerald-400" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/></svg>
+          <span class="text-slate-200">配音：${voiceLabel} (1.2x)</span>
+        `;
+      }
+
+      pickTargetVoice();
+      if (speechSynthesis.onvoiceschanged !== undefined) {
+        speechSynthesis.onvoiceschanged = pickTargetVoice;
+      }
+    }
+
+    /**
+     * 觸發單頁內部元素動畫序列
+     */
+    function triggerSlideAnimations(slideIndex) {
+      const slideEl = document.getElementById(`slide-${slideIndex}`);
+      if (!slideEl) return;
+
+      const animElements = slideEl.querySelectorAll('.anim-elem');
+      animElements.forEach(el => {
+        el.classList.remove('anim-visible');
+        const delay = parseInt(el.getAttribute('data-delay') || '100', 10);
+        setTimeout(() => {
+          if (state.currentIndex === slideIndex) {
+            el.classList.add('anim-visible');
+          }
+        }, delay);
+      });
+    }
+
+    /**
+     * 4. 播放單段語音旁白與精準字幕對位
+     */
+    function playSlideSpeechAndSubtitles(slideIndex) {
+      clearTimers();
+      window.speechSynthesis.cancel();
+
+      const slide = SLIDES_DATA[slideIndex];
+      state.currentSegmentIndex = 0;
+
+      // 逐步呈現字幕與語音導讀
+      function playSegment(segIdx) {
+        if (!state.isPlaying || state.currentIndex !== slideIndex) return;
+
+        if (segIdx >= slide.segments.length) {
+          // 本頁播放完畢，緩衝 1.2 秒後自動轉跳下一頁
+          state.slideTimer = setTimeout(() => {
+            if (state.currentIndex < SLIDES_DATA.length - 1) {
+              goToSlide(state.currentIndex + 1);
+            } else {
+              // 影片結束
+              pause();
+              showSubtitle("簡報影片播放完畢，感謝聆聽！");
+            }
+          }, 1200);
+          return;
+        }
+
+        const seg = slide.segments[segIdx];
+        state.currentSegmentIndex = segIdx;
+
+        // 更新字幕文字
+        showSubtitle(seg.text);
+
+        // 建立語音朗讀實例 (中等偏快 1.2 倍語速)
+        if (state.isSpeechSupported) {
+          const utter = new SpeechSynthesisUtterance(seg.text);
+          utter.rate = 1.2; // 依要求設定為 1.2 倍語速
+          utter.pitch = 1.0;
+          if (state.speechVoice) {
+            utter.voice = state.speechVoice;
+          }
+
+          utter.onend = () => {
+            // 語句結束時前進至下一段
+            playSegment(segIdx + 1);
+          };
+
+          utter.onerror = () => {
+            // 如遇錯誤以計時器備援
+            state.segmentTimer = setTimeout(() => {
+              playSegment(segIdx + 1);
+            }, (seg.duration * 1000) / 1.2);
+          };
+
+          window.speechSynthesis.speak(utter);
+        } else {
+          // 備援純計時模式
+          state.segmentTimer = setTimeout(() => {
+            playSegment(segIdx + 1);
+          }, (seg.duration * 1000) / 1.2);
+        }
+      }
+
+      playSegment(0);
+    }
+
+    /**
+     * 顯示底部字幕氣泡
+     */
+    function showSubtitle(text) {
+      if (!state.isSubtitleEnabled) {
+        subtitleBox.classList.add('opacity-0', 'scale-95');
+        return;
+      }
+      subtitleText.textContent = text;
+      subtitleBox.classList.remove('opacity-0', 'scale-95');
+      subtitleBox.classList.add('opacity-100', 'scale-100');
+    }
+
+    /**
+     * 切換投影片 (具轉場特效)
+     */
+    function goToSlide(targetIndex) {
+      if (targetIndex < 0 || targetIndex >= SLIDES_DATA.length) return;
+
+      const prevIndex = state.currentIndex;
+      const prevSlide = document.getElementById(`slide-${prevIndex}`);
+      const nextSlide = document.getElementById(`slide-${targetIndex}`);
+
+      // 移除前一張 active
+      if (prevSlide && prevIndex !== targetIndex) {
+        prevSlide.classList.remove('active');
+        prevSlide.classList.add('slide-out-prev');
+        setTimeout(() => {
+          prevSlide.classList.remove('slide-out-prev');
+        }, 700);
+      }
+
+      state.currentIndex = targetIndex;
+      nextSlide.classList.add('active');
+
+      // 更新進度與指標
+      slideIndicator.textContent = `${targetIndex + 1} / ${SLIDES_DATA.length}`;
+      updateProgressDisplay();
+
+      // 更新縮圖外框
+      SLIDES_DATA.forEach((_, idx) => {
+        const thumb = document.getElementById(`thumb-${idx}`);
+        if (thumb) {
+          if (idx === targetIndex) {
+            thumb.className = "group relative rounded-lg overflow-hidden border-2 aspect-video transition-all transform scale-105 border-amber-400 ring-2 ring-amber-400/50 opacity-100 z-10";
+          } else {
+            thumb.className = "group relative rounded-lg overflow-hidden border-2 aspect-video transition-all border-slate-800 opacity-60 hover:opacity-100";
+          }
+        }
+      });
+
+      // 觸發文字與 SVG 進場動態
+      triggerSlideAnimations(targetIndex);
+
+      // 如果正在播放，啟動旁白與同步字幕
+      if (state.isPlaying) {
+        playSlideSpeechAndSubtitles(targetIndex);
+      } else {
+        showSubtitle(SLIDES_DATA[targetIndex].segments[0].text);
+      }
+    }
+
+    /**
+     * 清理所有計時器
+     */
+    function clearTimers() {
+      if (state.slideTimer) clearTimeout(state.slideTimer);
+      if (state.segmentTimer) clearTimeout(state.segmentTimer);
+    }
+
+    /**
+     * 播放控制
+     */
+    function play() {
+      state.isPlaying = true;
+      iconPlay.classList.add('hidden');
+      iconPause.classList.remove('hidden');
+      startOverlay.classList.add('opacity-0', 'pointer-events-none');
+      playSlideSpeechAndSubtitles(state.currentIndex);
+    }
+
+    function pause() {
+      state.isPlaying = false;
+      iconPlay.classList.remove('hidden');
+      iconPause.classList.add('hidden');
+      clearTimers();
+      window.speechSynthesis.cancel();
+    }
+
+    function togglePlay() {
+      if (state.isPlaying) {
+        pause();
+      } else {
+        play();
+      }
+    }
+
+    /**
+     * 更新播放時間與進度條
+     */
+    function updateProgressDisplay() {
+      // 累計先前各頁秒數
+      let elapsed = 0;
+      for (let i = 0; i < state.currentIndex; i++) {
+        elapsed += SLIDES_DATA[i].segments.reduce((a, b) => a + b.duration, 0);
+      }
+      const percent = (elapsed / state.totalDurationSec) * 100;
+      timelineProgress.style.width = `${Math.min(percent, 100)}%`;
+      timeCurrent.textContent = formatTime(elapsed);
+    }
+
+    function formatTime(seconds) {
+      const mins = Math.floor(seconds / 60);
+      const secs = Math.floor(seconds % 60);
+      return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+    }
+
+    /**
+     * 時間軸點擊跳頁
+     */
+    timelineBar.addEventListener('click', (e) => {
+      const rect = timelineBar.getBoundingClientRect();
+      const clickRatio = (e.clientX - rect.left) / rect.width;
+      const targetSec = clickRatio * state.totalDurationSec;
+      
+      let runningSec = 0;
+      for (let i = 0; i < SLIDES_DATA.length; i++) {
+        const slideSec = SLIDES_DATA[i].segments.reduce((a, b) => a + b.duration, 0);
+        if (targetSec <= runningSec + slideSec || i === SLIDES_DATA.length - 1) {
+          goToSlide(i);
+          if (state.isPlaying) play();
+          break;
+        }
+        runningSec += slideSec;
+      }
+    });
+
+    /**
+     * 按鈕與鍵盤事件綁定
+     */
+    btnPlayPause.addEventListener('click', togglePlay);
+    startOverlay.addEventListener('click', () => {
+      goToSlide(0);
+      play();
+    });
+
+    btnReplay.addEventListener('click', () => {
+      goToSlide(state.currentIndex);
+      if (state.isPlaying) playSlideSpeechAndSubtitles(state.currentIndex);
+    });
+
+    btnPrev.addEventListener('click', () => {
+      if (state.currentIndex > 0) goToSlide(state.currentIndex - 1);
+    });
+
+    btnNext.addEventListener('click', () => {
+      if (state.currentIndex < SLIDES_DATA.length - 1) goToSlide(state.currentIndex + 1);
+    });
+
+    btnCC.addEventListener('click', () => {
+      state.isSubtitleEnabled = !state.isSubtitleEnabled;
+      btnCC.classList.toggle('bg-amber-400/20');
+      btnCC.classList.toggle('text-amber-300');
+      btnCC.classList.toggle('border-amber-400/80');
+      btnCC.classList.toggle('bg-slate-800');
+      btnCC.classList.toggle('text-slate-400');
+      btnCC.classList.toggle('border-slate-700');
+      
+      if (!state.isSubtitleEnabled) {
+        subtitleBox.classList.add('opacity-0');
+      } else {
+        subtitleBox.classList.remove('opacity-0');
+      }
+    });
+
+    // 全螢幕切換
+    btnFullscreen.addEventListener('click', () => {
+      const container = document.querySelector('main');
+      if (!document.fullscreenElement) {
+        container.requestFullscreen().catch(() => {});
+        iconFs.classList.add('hidden');
+        iconExitFs.classList.remove('hidden');
+      } else {
+        document.exitFullscreen().catch(() => {});
+        iconFs.classList.remove('hidden');
+        iconExitFs.classList.add('hidden');
+      }
+    });
+
+    document.addEventListener('fullscreenchange', () => {
+      if (!document.fullscreenElement) {
+        iconFs.classList.remove('hidden');
+        iconExitFs.classList.add('hidden');
+      }
+    });
+
+    // 鍵盤輔助操控
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'Space') {
+        e.preventDefault();
+        togglePlay();
+      } else if (e.code === 'ArrowRight') {
+        if (state.currentIndex < SLIDES_DATA.length - 1) goToSlide(state.currentIndex + 1);
+      } else if (e.code === 'ArrowLeft') {
+        if (state.currentIndex > 0) goToSlide(state.currentIndex - 1);
+      }
+    });
+
+    // 啟動流程
+    window.onload = () => {
+      initSlidesDOM();
+      setupVoiceEngine();
+      triggerSlideAnimations(0);
+    };
+  </script>
+</body>
+</html>
